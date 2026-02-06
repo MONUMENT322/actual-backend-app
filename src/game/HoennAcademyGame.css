@@ -1,0 +1,78 @@
+.rift-game {
+  color: #ecf4ff;
+  min-height: 100vh;
+  padding: 2rem 1rem 3rem;
+  max-width: 1000px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.rift-game header h1 {
+  margin-bottom: 0.25rem;
+}
+
+.status-grid {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.status-grid > div,
+.log,
+.ending,
+.action-grid button {
+  border: 1px solid #2f4168;
+  background: #162238;
+  border-radius: 12px;
+  padding: 0.8rem;
+}
+
+.action-grid {
+  margin-top: 1.2rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.8rem;
+}
+
+.action-grid button {
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.action-grid button span {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+}
+
+.action-grid button small {
+  opacity: 0.92;
+}
+
+.action-grid button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ending {
+  margin-top: 1rem;
+}
+
+.ending button {
+  margin-top: 0.5rem;
+  padding: 0.55rem 0.8rem;
+  border-radius: 8px;
+  border: 0;
+  cursor: pointer;
+}
+
+.log {
+  margin-top: 1rem;
+}
+
+.log ul {
+  margin: 0;
+  padding-left: 1rem;
+}
