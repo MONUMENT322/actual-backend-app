@@ -15,7 +15,7 @@
     .rift-game {
       min-height: 100vh;
       padding: 2rem 1rem 3rem;
-      max-width: 1000px;
+      max-width: 1080px;
       margin: 0 auto;
       text-align: left;
     }
@@ -29,7 +29,9 @@
     .status-grid > div,
     .log,
     .ending,
-    .action-grid button {
+    .action-grid button,
+    .social-links,
+    .story-feed {
       border: 1px solid #2f4168;
       background: #162238;
       border-radius: 12px;
@@ -53,8 +55,15 @@
       margin-bottom: .35rem;
     }
     .action-grid button small { opacity: .92; display:block; }
-    .action-grid button:disabled { opacity: .5; cursor: not-allowed; }
-    .ending { margin-top: 1rem; }
+    .action-grid button:disabled,
+    .social-links button:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+    .social-links,
+    .story-feed,
+    .ending,
+    .log { margin-top: 1rem; }
     .ending button {
       margin-top: .5rem;
       padding: .55rem .8rem;
@@ -62,20 +71,58 @@
       border: 0;
       cursor: pointer;
     }
-    .log { margin-top: 1rem; }
-    .log ul { margin: 0; padding-left: 1rem; }
+    .log ul,
+    .story-feed ul { margin: 0; padding-left: 1rem; }
+    .classmate-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: .65rem;
+      margin-top: .7rem;
+    }
+    .classmate-card {
+      border: 1px solid #2f4168;
+      border-radius: 10px;
+      padding: .55rem;
+      background: #1d2b46;
+    }
+    .classmate-card.active {
+      border-color: #76b9ff;
+      box-shadow: inset 0 0 0 1px #76b9ff;
+    }
+    .classmate-card h4 { margin: 0 0 .3rem 0; }
+    .classmate-card p { margin: 0 0 .35rem 0; font-size: .9rem; opacity: .95; }
+    .classmate-card button {
+      border: 1px solid #4f78aa;
+      background: #294165;
+      color: #ecf4ff;
+      border-radius: 8px;
+      cursor: pointer;
+      padding: .35rem .5rem;
+      width: 100%;
+    }
   </style>
 </head>
 <body>
   <div class="rift-game">
     <header>
       <h1>Hoenn Rift: 100-Day Protocol</h1>
-      <p>Build power, strengthen bonds, and clear badges before day 100.</p>
+      <p>Build power, strengthen bonds, clear badges, and rank up your 12 classmates to unlock social stories.</p>
     </header>
 
     <section class="status-grid" id="status"></section>
 
     <section class="action-grid" id="actions"></section>
+
+    <section class="social-links">
+      <h3>Classmate Links (12)</h3>
+      <p id="selectedClassmateLine"></p>
+      <div class="classmate-grid" id="classmateGrid"></div>
+    </section>
+
+    <section class="story-feed">
+      <h3>Hangout Story Feed</h3>
+      <ul id="storyFeedList"></ul>
+    </section>
 
     <section class="ending" id="ending" hidden></section>
 
@@ -86,7 +133,43 @@
   </div>
 
   <script>
-    const STARTING_STATE = {
+    const CLASSMATES = [
+      { id: 'maya', name: 'Maya', role: 'Class Rep' },
+      { id: 'kael', name: 'Kael', role: 'Track Captain' },
+      { id: 'lina', name: 'Lina', role: 'Nurse Club Lead' },
+      { id: 'orion', name: 'Orion', role: 'Astronomy Nerd' },
+      { id: 'yuna', name: 'Yuna', role: 'Contest Idol' },
+      { id: 'dante', name: 'Dante', role: 'Mechanics Prodigy' },
+      { id: 'sora', name: 'Sora', role: 'Quiet Transfer' },
+      { id: 'reina', name: 'Reina', role: 'Library Keeper' },
+      { id: 'taro', name: 'Taro', role: 'Chef Apprentice' },
+      { id: 'ivy', name: 'Ivy', role: 'Eco Club Scout' },
+      { id: 'zeph', name: 'Zeph', role: 'Battle Maniac' },
+      { id: 'noel', name: 'Noel', role: 'Student Journalist' }
+    ];
+
+    const RANK_STORY_BEATS = [
+      'You and {name} awkwardly introduce yourselves after class, then agree to patrol the first Rift lane together.',
+      '{name} admits pressure from being the {role}, and trusts you enough to ask for battle advice.',
+      'A routine hangout turns into a rescue when wild echoes appear; {name} starts relying on your calm decisions.',
+      '{name} opens up about a family expectation they never wanted, and you promise to help them choose their own path.',
+      'You train at sunset and discover {name} has a hidden talent that changes your strategy for the next boss.',
+      'A rumor threatens {name}\'s reputation; you investigate together and clear their name before morning homeroom.',
+      '{name} confesses fear of failing everyone. You tell them leadership means asking for help, not carrying everything alone.',
+      'During a major Rift surge, {name} saves your squad first and admits your friendship gave them courage to act.',
+      'On the eve of exams and crisis deadlines, you and {name} make a pact to face finals and fate together.',
+      'Max Rank Scene: {name} chooses their future with confidence and promises to stand beside you in the final battle.'
+    ];
+
+    const createInitialSocialLinks = () => {
+      const links = {};
+      CLASSMATES.forEach((mate) => {
+        links[mate.id] = { rank: 0, scenes: [] };
+      });
+      return links;
+    };
+
+    const createStartingState = () => ({
       day: 1,
       energy: 3,
       maxEnergy: 3,
@@ -98,8 +181,13 @@
       hp: 24,
       maxHp: 24,
       endingUnlocked: null,
+      selectedClassmateId: CLASSMATES[0].id,
+      socialLinks: createInitialSocialLinks(),
+      storyFeed: ['Pick a classmate, use Hang Out, and start building 10 social ranks.'],
       log: ['Welcome to Hoenn Academy. Build your squad and survive the Rift season.']
-    };
+    });
+
+    const STARTING_STATE = createStartingState();
 
     const WEEKLY_BOSSES = [
       { name: 'Rustboro Colossus', hp: 14, damage: 3, badge: 'Stone' },
@@ -110,19 +198,31 @@
 
     const ACTIVITY_CARD = [
       { key: 'train', title: 'Train Squad', text: '+1 Attack, +2 EXP. Better damage for dungeon runs.' },
-      { key: 'social', title: 'Hang with Teammates', text: '+2 Bond. Bond gives healing and true-ending potential.' },
+      { key: 'social', title: 'Hang Out', text: 'Spend time with selected classmate to raise Bond and social ranks.' },
       { key: 'job', title: 'Part-time Job', text: '+1 Max HP and full heal. Keeps late game stable.' },
       { key: 'dungeon', title: 'Rift Dive', text: 'Fight enemies for EXP and badges. Risky but required to win.' }
     ];
 
-    let game = structuredClone(STARTING_STATE);
+    let game = createStartingState();
 
     const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-    const addLog = (message) => { game.log = [message, ...game.log].slice(0, 10); };
+    const addLog = (message) => { game.log = [message, ...game.log].slice(0, 12); };
+    const addStoryFeed = (scene) => { game.storyFeed = [scene, ...game.storyFeed].slice(0, 14); };
 
     const getCurrentBoss = () => {
       const weekIndex = Math.min(Math.floor((game.day - 1) / 25), WEEKLY_BOSSES.length - 1);
       return WEEKLY_BOSSES[weekIndex];
+    };
+
+    const getClassmate = (id) => CLASSMATES.find((mate) => mate.id === id);
+
+    const getHangoutStory = (mate, rank) => {
+      const base = RANK_STORY_BEATS[rank - 1] || RANK_STORY_BEATS[RANK_STORY_BEATS.length - 1];
+      return base.replaceAll('{name}', mate.name).replaceAll('{role}', mate.role);
+    };
+
+    const getTotalSocialRanks = () => {
+      return CLASSMATES.reduce((sum, mate) => sum + game.socialLinks[mate.id].rank, 0);
     };
 
     const levelUpIfNeeded = () => {
@@ -143,17 +243,39 @@
         return;
       }
       if (game.day > 100) {
-        if (game.badges >= 8 && game.bond >= 20) {
+        const totalRanks = getTotalSocialRanks();
+        if (game.badges >= 8 && game.bond >= 20 && totalRanks >= 70) {
           game.endingUnlocked = 'true';
-          addLog('True ending unlocked! You prevented the apocalypse and kept your whole squad together.');
+          addLog('True ending unlocked! You prevented the apocalypse and united most of your classmates.');
         } else if (game.badges >= 6) {
           game.endingUnlocked = 'good';
-          addLog('Good ending unlocked! Crisis stopped, but some relationships were left unresolved.');
+          addLog('Good ending unlocked! Crisis stopped, but some classmate stories remain unresolved.');
         } else {
           game.endingUnlocked = 'normal';
           addLog('Normal ending: you reached the final day without enough badges to fully stop the Rift.');
         }
       }
+    };
+
+    const resolveHangout = () => {
+      const mate = getClassmate(game.selectedClassmateId);
+      const link = game.socialLinks[mate.id];
+
+      game.bond += 2;
+      game.hp = clamp(game.hp + 3, 0, game.maxHp);
+
+      if (link.rank >= 10) {
+        addLog(`You spent quality time with ${mate.name}. Their social link is already max rank.`);
+        return;
+      }
+
+      link.rank += 1;
+      const story = getHangoutStory(mate, link.rank);
+      const sceneLabel = `${mate.name} Rank ${link.rank}: ${story}`;
+      link.scenes.push(sceneLabel);
+
+      addStoryFeed(sceneLabel);
+      addLog(`Hangout complete with ${mate.name}. Social rank increased to ${link.rank}.`);
     };
 
     const onAction = (type) => {
@@ -169,9 +291,7 @@
       }
 
       if (type === 'social') {
-        game.bond += 2;
-        game.hp = clamp(game.hp + 3, 0, game.maxHp);
-        addLog('You spent time with teammates. Bond increased and morale restored HP.');
+        resolveHangout();
       }
 
       if (type === 'job') {
@@ -207,12 +327,16 @@
     };
 
     const resetGame = () => {
-      game = structuredClone(STARTING_STATE);
+      game = createStartingState();
       render();
     };
 
     const render = () => {
       const currentBoss = getCurrentBoss();
+      const selectedClassmate = getClassmate(game.selectedClassmateId);
+      const selectedRank = game.socialLinks[selectedClassmate.id].rank;
+      const totalRanks = getTotalSocialRanks();
+
       const status = [
         ['Day:', `${game.day}/100`],
         ['Energy:', `${game.energy}/${game.maxEnergy}`],
@@ -221,6 +345,7 @@
         ['Attack:', game.attack],
         ['Bond:', game.bond],
         ['Badges:', game.badges],
+        ['Total Social Ranks:', `${totalRanks}/120`],
         ['Current threat:', `${currentBoss.name} (${currentBoss.badge} Badge)`]
       ];
 
@@ -238,9 +363,53 @@
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.disabled = Boolean(game.endingUnlocked) || game.energy <= 0;
-        btn.innerHTML = `<span>${activity.title}</span><small>${activity.text}</small>`;
+
+        const actionTitle = activity.key === 'social'
+          ? `${activity.title}: ${selectedClassmate.name} (Rank ${selectedRank}/10)`
+          : activity.title;
+
+        btn.innerHTML = `<span>${actionTitle}</span><small>${activity.text}</small>`;
         btn.addEventListener('click', () => onAction(activity.key));
         actionsEl.appendChild(btn);
+      });
+
+      document.getElementById('selectedClassmateLine').textContent =
+        `Selected classmate: ${selectedClassmate.name} (${selectedClassmate.role}) — Rank ${selectedRank}/10`;
+
+      const classmateGrid = document.getElementById('classmateGrid');
+      classmateGrid.innerHTML = '';
+      CLASSMATES.forEach((mate) => {
+        const rank = game.socialLinks[mate.id].rank;
+        const card = document.createElement('article');
+        card.className = `classmate-card ${mate.id === game.selectedClassmateId ? 'active' : ''}`;
+
+        const title = document.createElement('h4');
+        title.textContent = `${mate.name} — Rank ${rank}/10`;
+
+        const role = document.createElement('p');
+        role.textContent = mate.role;
+
+        const pickBtn = document.createElement('button');
+        pickBtn.type = 'button';
+        pickBtn.textContent = mate.id === game.selectedClassmateId ? 'Selected' : `Select ${mate.name}`;
+        pickBtn.disabled = mate.id === game.selectedClassmateId;
+        pickBtn.addEventListener('click', () => {
+          game.selectedClassmateId = mate.id;
+          render();
+        });
+
+        card.appendChild(title);
+        card.appendChild(role);
+        card.appendChild(pickBtn);
+        classmateGrid.appendChild(card);
+      });
+
+      const storyFeedList = document.getElementById('storyFeedList');
+      storyFeedList.innerHTML = '';
+      game.storyFeed.forEach((scene) => {
+        const li = document.createElement('li');
+        li.textContent = scene;
+        storyFeedList.appendChild(li);
       });
 
       const endingEl = document.getElementById('ending');
