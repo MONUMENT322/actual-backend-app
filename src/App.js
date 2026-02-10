@@ -4,6 +4,7 @@ import './App.css';
 import HomePage from './unAuth/HomePage';
 import SignPage from './unAuth/SignPage';
 import Dashboard from './Auth/Dashboard';
+import HoennAcademyGame from './game/HoennAcademyGame';
 import { AuthProvider, useAuth } from './AuthContext';
 import './firebase';
 import { Helmet } from 'react-helmet';
@@ -45,7 +46,9 @@ function App() {
             ]}
           </Helmet>
           <Routes>
-            <Route path="/" element={<HomePage />} />
+            <Route path="/" element={<HoennAcademyGame />} />
+            <Route path="/home" element={<HomePage />} />
+            <Route path="/game" element={<HoennAcademyGame />} />
             <Route path="/signup" element={<SignPage />} />
             <Route
               path="/dashboard"

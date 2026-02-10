@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Hoenn Rift: Standalone</title>
+  <style>
+    body { margin:0; font-family:Arial,sans-serif; background:#0a111d; color:#ecf4ff; }
+    .wrap { max-width:1000px; margin:0 auto; padding:20px; }
+    .grid { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); }
+    .card { border:1px solid #2f4168; background:#162238; border-radius:10px; padding:10px; }
+    .actions { display:grid; gap:12px; margin-top:14px; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); }
+    button { width:100%; color:#ecf4ff; background:#162238; border:1px solid #2f4168; border-radius:10px; padding:10px; text-align:left; cursor:pointer; }
+    button:disabled { opacity:0.5; cursor:not-allowed; }
+    small { opacity:.9; display:block; margin-top:6px; }
+    #log { margin-top:14px; }
+    h1 { margin:0 0 6px 0; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Hoenn Rift: 100-Day Protocol</h1>
+    <p>Standalone build (no React required).</p>
+
+    <div id="status" class="grid"></div>
+
+    <div class="actions" id="actions"></div>
+
+    <div id="ending" class="card" style="display:none"></div>
+
+    <div id="log" class="card">
+      <h3>Action Log</h3>
+      <ul id="log-list"></ul>
+    </div>
+  </div>
+
+  <script>
+    const STARTING_STATE = {
+      day: 1, energy: 3, maxEnergy: 3, attack: 1, bond: 0, exp: 0, level: 1,
+      badges: 0, hp: 24, maxHp: 24, endingUnlocked: null,
+      log: ['Welcome to Hoenn Academy. Build your squad and survive the Rift season.']
+    };
+
+    const BOSSES = [
+      { name: 'Rustboro Colossus', hp: 14, damage: 3, badge: 'Stone' },
+      { name: 'Mauville Surge Beast', hp: 18, damage: 4, badge: 'Dynamo' },
+      { name: 'Fortree Sky Tyrant', hp: 22, damage: 5, badge: 'Feather' },
+      { name: 'Sootopolis Rift Core', hp: 30, damage: 6, badge: 'Rain' }
+    ];
+
+    const ACTIVITIES = [
+      ['train','Train Squad','+1 Attack, +2 EXP. Better damage for dungeon runs.'],
+      ['social','Hang with Teammates','+2 Bond. Bond gives healing and true-ending potential.'],
+      ['job','Part-time Job','+1 Max HP and full heal. Keeps late game stable.'],
+      ['dungeon','Rift Dive','Fight enemies for EXP and badges. Risky but required to win.']
+    ];
+
+    let game = JSON.parse(JSON.stringify(STARTING_STATE));
+
+    const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+    const addLog = (msg) => game.log = [msg, ...game.log].slice(0, 10);
+
+    function currentBoss() {
+      const i = Math.min(Math.floor((game.day - 1) / 25), BOSSES.length - 1);
+      return BOSSES[i];
+    }
+
+    function levelUpIfNeeded() {
+      while (game.exp >= game.level * 8) {
+        game.exp -= game.level * 8;
+        game.level += 1;
+        game.attack += 1;
+        game.maxHp += 2;
+        game.hp = game.maxHp;
+        addLog(`Level up! You reached level ${game.level}. HP fully restored.`);
+      }
+    }
+
+    function checkEndings() {
+      if (game.hp <= 0) {
+        game.endingUnlocked = 'bad';
+        addLog('Bad ending: your team collapsed in the Rift.');
+        return;
+      }
+      if (game.day > 100) {
+        if (game.badges >= 8 && game.bond >= 20) {
+          game.endingUnlocked = 'true';
+          addLog('True ending unlocked! You prevented the apocalypse.');
+        } else if (game.badges >= 6) {
+          game.endingUnlocked = 'good';
+          addLog('Good ending unlocked! Crisis stopped.');
+        } else {
+          game.endingUnlocked = 'normal';
+          addLog('Normal ending: insufficient badges.');
+        }
+      }
+    }
+
+    function doAction(type) {
+      if (game.energy <= 0 || game.endingUnlocked) return;
+      game.energy -= 1;
+      const boss = currentBoss();
+
+      if (type === 'train') { game.attack += 1; game.exp += 2; addLog('Training complete.'); }
+      if (type === 'social') { game.bond += 2; game.hp = clamp(game.hp + 3, 0, game.maxHp); addLog('Bond increased.'); }
+      if (type === 'job') { game.maxHp += 1; game.hp = game.maxHp; addLog('Shift complete. Max HP increased.'); }
+      if (type === 'dungeon') {
+        const enemyHit = Math.floor(Math.random() * (boss.damage + 1));
+        const playerHit = game.attack + Math.floor(Math.random() * 4);
+        game.hp = clamp(game.hp - enemyHit, 0, game.maxHp);
+        game.exp += 4;
+        if (playerHit >= boss.hp / 3) { game.badges += 1; addLog(`Rift victory vs ${boss.name}!`); }
+        else addLog(`Rift clear: dealt ${playerHit}, took ${enemyHit}.`);
+      }
+
+      levelUpIfNeeded();
+      if (game.energy === 0) { game.day += 1; game.energy = game.maxEnergy; addLog(`Day ${game.day} begins.`); }
+      checkEndings();
+      render();
+    }
+
+    function resetGame() { game = JSON.parse(JSON.stringify(STARTING_STATE)); render(); }
+
+    function render() {
+      const boss = currentBoss();
+      const status = [
+        ['Day', `${game.day}/100`], ['Energy', `${game.energy}/${game.maxEnergy}`], ['Level', game.level],
+        ['HP', `${game.hp}/${game.maxHp}`], ['Attack', game.attack], ['Bond', game.bond],
+        ['Badges', game.badges], ['Current threat', `${boss.name} (${boss.badge} Badge)`]
+      ];
+
+      document.getElementById('status').innerHTML = status
+        .map(([k,v]) => `<div class="card"><strong>${k}:</strong> ${v}</div>`).join('');
+
+      document.getElementById('actions').innerHTML = ACTIVITIES.map(([k,t,txt]) =>
+        `<button ${game.endingUnlocked ? 'disabled' : ''} onclick="doAction('${k}')"><strong>${t}</strong><small>${txt}</small></button>`
+      ).join('');
+
+      const ending = document.getElementById('ending');
+      if (game.endingUnlocked) {
+        ending.style.display = 'block';
+        ending.innerHTML = `<h2>Run complete: ${game.endingUnlocked.toUpperCase()} ENDING</h2><button onclick="resetGame()">Start New Run</button>`;
+      } else {
+        ending.style.display = 'none';
+      }
+
+      document.getElementById('log-list').innerHTML = game.log.map((line) => `<li>${line}</li>`).join('');
+    }
+
+    render();
+  </script>
+</body>
+</html>

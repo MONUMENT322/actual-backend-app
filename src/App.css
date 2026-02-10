@@ -1,5 +1,4 @@
 .App {
-  text-align: center;
-  background-color: #121212;
-
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #243e67 0%, #10192b 55%, #0a111d 100%);
 }
